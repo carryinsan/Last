@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <meta name="description" content="HyperNexus: The Ultimate Utility Vault">
+    <link rel="manifest" href="manifest.json">
+    <title>HyperNexus | Ultimate</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        void: '#000000',
+                        panel: '#0a0a0a',
+                        border: '#222222',
+                        primary: '#00f0ff', /* Cyber Blue */
+                        accent: '#7000ff', /* Neon Purple */
+                        success: '#00ff41',
+                        danger: '#ff003c'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    animation: {
+                        'spin-slow': 'spin 3s linear infinite',
+                        'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #000000; color: #e5e5e5; -webkit-tap-highlight-color: transparent; }
+        .glass { background: rgba(20, 20, 20, 0.6); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.08); }
+        .glass-active { background: rgba(0, 240, 255, 0.05); border-color: rgba(0, 240, 255, 0.3); }
+        .menu-item.active { border-left: 3px solid #00f0ff; background: linear-gradient(90deg, rgba(0,240,255,0.1) 0%, transparent 100%); color: #00f0ff; }
+        .menu-item { border-left: 3px solid transparent; transition: all 0.2s; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+        
+        /* Video Player */
+        video { width: 100%; border-radius: 8px; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden select-none font-sans bg-void text-gray-300">
+
+    <!-- HEADER -->
+    <header class="h-14 px-4 flex items-center justify-between border-b border-white/10 bg-void/80 backdrop-blur-md z-[50] relative">
+        <div class="flex items-center gap-2">
+            <i class="fa-solid fa-bolt text-primary animate-pulse"></i>
+            <span class="font-bold tracking-widest text-sm text-white">HYPER<span class="text-primary">NEXUS</span></span>
+        </div>
+        
+        <div class="flex items-center gap-4">
+            <button onclick="app.toggleFullscreen()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-expand"></i></button>
+            <button onclick="app.toggleMenu()" class="text-primary hover:text-white text-lg"><i class="fa-solid fa-bars"></i></button>
+        </div>
+    </header>
+
+    <!-- DRAWER MENU -->
+    <div id="menu-backdrop" onclick="app.toggleMenu()" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[55] hidden transition-opacity opacity-0"></div>
+    <div id="side-menu" class="fixed inset-y-0 right-0 w-72 bg-panel border-l border-white/10 z-[60] transform translate-x-full transition-transform duration-300 flex flex-col shadow-2xl shadow-primary/10">
+        <div class="p-5 border-b border-white/5 flex justify-between items-center bg-black/50">
+            <span class="text-xs font-bold text-gray-500 uppercase">System Menu</span>
+            <button onclick="app.toggleMenu()" class="text-danger"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        
+        <div class="flex-1 p-3 space-y-1 overflow-y-auto">
+            <button onclick="app.route('vault')" class="menu-item active w-full p-3 rounded flex items-center gap-3 text-sm font-bold"><i class="fa-solid fa-vault w-5 text-center"></i> DATA VAULT</button>
+            <button onclick="app.route('motion')" class="menu-item w-full p-3 rounded flex items-center gap-3 text-sm font-bold"><i class="fa-solid fa-gauge-high w-5 text-center"></i> SPEED & G-FORCE</button>
+            <button onclick="app.route('network')" class="menu-item w-full p-3 rounded flex items-center gap-3 text-sm font-bold"><i class="fa-solid fa-globe w-5 text-center"></i> NETWORK INTEL</button>
+            <button onclick="app.route('tools')" class="menu-item w-full p-3 rounded flex items-center gap-3 text-sm font-bold"><i class="fa-solid fa-screwdriver-wrench w-5 text-center"></i> UTILITIES</button>
+        </div>
+
+        <!-- Info Footer -->
+        <div class="p-4 border-t border-white/5 text-[10px] text-gray-500 font-mono">
+            <div id="bat-status" class="flex justify-between mb-1"><span>BATTERY</span> <span class="text-white">--</span></div>
+            <div id="storage-status" class="flex justify-between"><span>STORAGE</span> <span class="text-white">--</span></div>
+        </div>
+    </div>
+
+    <!-- MAIN VIEWPORT -->
+    <main class="flex-1 relative overflow-hidden bg-void">
+
+        <!-- 1. VAULT (Storage & Share) -->
+        <div id="view-vault" class="view-section absolute inset-0 flex flex-col">
+            <!-- Drop Zone -->
+            <div class="p-4 bg-panel border-b border-white/5">
+                <div class="glass p-3 rounded-lg border-dashed border border-white/20">
+                    <div class="flex justify-between text-[10px] text-gray-500 uppercase font-bold mb-2">
+                        <span>Share Target / Upload</span>
+                        <span id="save-status" class="text-primary hidden">SAVING...</span>
+                    </div>
+                    
+                    <input type="text" id="share-input" class="w-full bg-black/50 border border-white/10 rounded p-2 text-xs text-white mb-2 focus:border-primary outline-none font-mono" placeholder="Paste text, links, or share content here...">
+                    
+                    <div class="flex gap-2">
+                        <button onclick="vault.saveText()" class="flex-1 bg-white/5 hover:bg-white/10 text-xs py-2 rounded text-gray-300 border border-white/5">
+                            <i class="fa-solid fa-floppy-disk mr-1"></i> Save Text
+                        </button>
+                        <label class="flex-1 bg-white/5 hover:bg-white/10 text-xs py-2 rounded text-gray-300 border border-white/5 flex items-center justify-center cursor-pointer">
+                            <i class="fa-solid fa-cloud-arrow-up mr-1"></i> Upload File
+                            <input type="file" onchange="vault.saveFile(this)" class="hidden">
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <!-- List -->
+            <div id="vault-list" class="flex-1 overflow-y-auto p-4 space-y-3 pb-20">
+                <!-- Items injected here -->
+            </div>
+        </div>
+
+        <!-- 2. MOTION (Accelerometer & GPS Speed) -->
+        <div id="view-motion" class="view-section hidden absolute inset-0 overflow-y-auto p-4 space-y-4">
+            <!-- GPS Speed -->
+            <div class="glass p-5 rounded-xl text-center relative overflow-hidden">
+                <div class="absolute top-2 right-2 text-[10px] text-primary border border-primary px-2 rounded">GPS</div>
+                <h2 class="text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">Real Velocity</h2>
+                <div class="text-6xl font-black text-white" id="gps-speed">0.0</div>
+                <div class="text-sm text-gray-500 font-bold">KM/H</div>
+                <div class="mt-4 text-[10px] text-gray-400 bg-black/40 p-2 rounded">
+                    Requires movement (Running/Driving). Static sensors cannot measure external object speed.
+                </div>
+                <button onclick="motion.toggleGPS()" id="btn-gps" class="mt-3 w-full py-2 bg-white/5 border border-white/10 rounded text-xs hover:bg-white/10">ENABLE GPS</button>
+            </div>
+
+            <!-- Accelerometer G-Force -->
+            <div class="glass p-4 rounded-xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-gray-500 text-xs font-bold uppercase tracking-widest">G-Force (Impact)</h2>
+                    <span id="g-val" class="text-xl font-mono text-accent">0.0g</span>
+                </div>
+                
+                <!-- Visualizer Bar -->
+                <div class="h-4 bg-black rounded-full overflow-hidden border border-white/10 mb-2">
+                    <div id="g-bar" class="h-full bg-accent w-0 transition-all duration-75"></div>
+                </div>
+                
+                <div class="grid grid-cols-3 gap-2 text-[10px] font-mono text-center text-gray-500">
+                    <div class="bg-black/40 p-1 rounded">X: <span id="acc-x" class="text-white">0</span></div>
+                    <div class="bg-black/40 p-1 rounded">Y: <span id="acc-y" class="text-white">0</span></div>
+                    <div class="bg-black/40 p-1 rounded">Z: <span id="acc-z" class="text-white">0</span></div>
+                </div>
+                <button onclick="motion.reqPermission()" class="mt-3 w-full py-2 bg-white/5 border border-white/10 rounded text-xs text-gray-400">Request Sensor Permission (iOS)</button>
+            </div>
+            
+            <!-- Guide Snippet -->
+            <div class="border-l-2 border-primary pl-3 py-1">
+                <h4 class="text-xs font-bold text-white">How to measure speed?</h4>
+                <p class="text-[10px] text-gray-400">1. For Run/Drive: Use GPS (Requires outdoors).<br>2. For Throws: Secure phone safely. The G-Force meter measures the throw intensity.</p>
+            </div>
+        </div>
+
+        <!-- 3. NETWORK (IP & Speed) -->
+        <div id="view-network" class="view-section hidden absolute inset-0 overflow-y-auto p-4 space-y-4">
+            <!-- IP Intel -->
+            <div class="glass p-4 rounded-xl">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-xs font-bold text-gray-500 uppercase">Public Identity</h3>
+                    <button onclick="net.fetchIP()" class="text-xs text-primary border border-primary/30 px-2 py-1 rounded hover:bg-primary/10">REFRESH</button>
+                </div>
+                <div id="ip-data" class="space-y-2 text-xs font-mono">
+                    <div class="flex justify-between border-b border-white/5 pb-1"><span>IP</span> <span class="text-white select-all" id="my-ip">--</span></div>
+                    <div class="flex justify-between border-b border-white/5 pb-1"><span>ISP</span> <span class="text-white" id="my-isp">--</span></div>
+                    <div class="flex justify-between"><span>LOC</span> <span class="text-white" id="my-city">--</span></div>
+                </div>
+            </div>
+
+            <!-- Download Test -->
+            <div class="glass p-4 rounded-xl text-center">
+                <h3 class="text-xs font-bold text-gray-500 uppercase mb-2">Throughput</h3>
+                <div class="text-4xl font-black text-white mb-1" id="net-speed">0.0</div>
+                <div class="text-[10px] text-gray-500 mb-4">MEGABITS PER SEC</div>
+                <button onclick="net.runSpeedTest()" id="btn-speed" class="w-full bg-primary/20 text-primary border border-primary/50 py-3 rounded font-bold text-xs hover:bg-primary/30 transition">RUN SPEED TEST</button>
+            </div>
+            
+            <!-- Connection Status -->
+            <div class="flex gap-2">
+                <div class="flex-1 glass p-2 rounded text-center">
+                    <div class="text-[9px] text-gray-500">RTT (PING)</div>
+                    <div id="val-ping" class="text-sm font-mono text-white">--</div>
+                </div>
+                <div class="flex-1 glass p-2 rounded text-center">
+                    <div class="text-[9px] text-gray-500">TYPE</div>
+                    <div id="val-type" class="text-sm font-mono text-white">--</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. TOOLS (QR, Wake Lock, Torch) -->
+        <div id="view-tools" class="view-section hidden absolute inset-0 overflow-y-auto p-4 space-y-4">
+            
+            <!-- Wake Lock -->
+            <div class="glass p-3 rounded-xl flex items-center justify-between">
+                <div>
+                    <h3 class="text-sm font-bold text-white">Wake Lock</h3>
+                    <p class="text-[10px] text-gray-500">Keep screen awake</p>
+                </div>
+                <button id="btn-wake" onclick="tools.toggleWakeLock()" class="w-10 h-6 rounded-full bg-white/10 relative transition-colors">
+                    <div class="w-4 h-4 bg-white rounded-full absolute top-1 left-1 transition-transform"></div>
+                </button>
+            </div>
+
+            <!-- Torch -->
+            <div class="glass p-3 rounded-xl flex items-center justify-between">
+                <div>
+                    <h3 class="text-sm font-bold text-white">Torch</h3>
+                    <p class="text-[10px] text-gray-500">Camera Flash</p>
+                </div>
+                <button id="btn-torch" onclick="tools.toggleTorch()" class="w-10 h-6 rounded-full bg-white/10 relative transition-colors">
+                    <div class="w-4 h-4 bg-white rounded-full absolute top-1 left-1 transition-transform"></div>
+                </button>
+            </div>
+
+            <!-- QR Generator -->
+            <div class="glass p-4 rounded-xl">
+                <h3 class="text-xs font-bold text-gray-500 uppercase mb-2">QR Generator</h3>
+                <input type="text" id="qr-text" class="w-full bg-black border border-white/10 p-2 text-xs rounded mb-2 text-white" placeholder="Enter text to encode...">
+                <button onclick="tools.genQR()" class="w-full bg-white/10 py-2 rounded text-xs text-white mb-3">GENERATE</button>
+                <div id="qr-output" class="flex justify-center bg-white p-2 rounded hidden">
+                    <!-- IMG injected here -->
+                </div>
+            </div>
+            
+            <!-- Dead Pixel Test -->
+            <button onclick="tools.deadPixel()" class="w-full border border-danger/50 text-danger py-3 rounded text-xs hover:bg-danger/10">
+                RUN DEAD PIXEL TEST (WARNING: FLASHING)
+            </button>
+        </div>
+
+    </main>
+
+    <!-- PREVIEW MODAL -->
+    <div id="preview-modal" class="fixed inset-0 z-[70] bg-black hidden flex flex-col">
+        <div class="h-12 border-b border-white/10 flex items-center justify-between px-4 bg-panel">
+            <h3 id="preview-title" class="text-xs font-bold text-white truncate max-w-[200px]">Preview</h3>
+            <button onclick="document.getElementById('preview-modal').classList.add('hidden')" class="w-8 h-8 flex items-center justify-center text-white"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div id="preview-body" class="flex-1 overflow-auto p-2 flex items-center justify-center"></div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-surface2 border border-primary text-primary px-4 py-2 rounded-full text-xs font-bold shadow-lg shadow-primary/20 translate-y-20 transition-transform duration-300 z-[80]">
+        Action Completed
+    </div>
+
+    <script>
+        // --- DATABASE (INDEXEDDB) ---
+        const db = {
+            conn: null,
+            init: function() {
+                return new Promise((res) => {
+                    const r = indexedDB.open('HyperNexusDB_Ult', 1);
+                    r.onupgradeneeded = (e) => {
+                        const d = e.target.result;
+                        if (!d.objectStoreNames.contains('files')) d.createObjectStore('files', { keyPath: 'id', autoIncrement: true });
+                    };
+                    r.onsuccess = (e) => { this.conn = e.target.result; this.checkUsage(); res(); };
+                });
+            },
+            add: function(data) {
+                return new Promise(res => {
+                    const tx = this.conn.transaction(['files'], 'readwrite');
+                    tx.objectStore('files').add(data);
+                    tx.oncomplete = () => { this.checkUsage(); res(); };
+                });
+            },
+            getAll: function() {
+                return new Promise(res => {
+                    if(!this.conn) return res([]);
+                    const tx = this.conn.transaction(['files'], 'readonly');
+                    res(tx.objectStore('files').getAll());
+                });
+            },
+            del: function(id) {
+                return new Promise(res => {
+                    const tx = this.conn.transaction(['files'], 'readwrite');
+                    tx.objectStore('files').delete(id);
+                    tx.oncomplete = () => { this.checkUsage(); res(); };
+                });
+            },
+            checkUsage: function() {
+                if(navigator.storage && navigator.storage.estimate) {
+                    navigator.storage.estimate().then(e => {
+                        const p = ((e.usage / e.quota) * 100).toFixed(1);
+                        const mb = (e.usage/1024/1024).toFixed(0);
+                        document.getElementById('storage-status').innerHTML = `<span>STORAGE</span> <span class="text-primary">${mb}MB (${p}%)</span>`;
+                    });
+                }
+            }
+        };
+
+        // --- CORE UI ---
+        const app = {
+            menuOpen: false,
+            init: async function() {
+                await db.init();
+                this.handleShareTarget();
+                vault.render();
+                
+                // Battery
+                if(navigator.getBattery) {
+                    navigator.getBattery().then(b => {
+                        const up = () => document.getElementById('bat-status').innerHTML = `<span>BATTERY</span> <span class="${b.level < 0.2 ? 'text-danger':'text-success'}">${Math.round(b.level*100)}%</span>`;
+                        up(); b.addEventListener('levelchange', up);
+                    });
+                }
+                
+                // SW for PWA
+                if('serviceWorker' in navigator) {
+                    const blob = new Blob(["self.addEventListener('fetch',e=>{})"], {type:'text/javascript'});
+                    navigator.serviceWorker.register(URL.createObjectURL(blob));
+                }
+            },
+            toggleMenu: function() {
+                this.menuOpen = !this.menuOpen;
+                const m = document.getElementById('side-menu');
+                const b = document.getElementById('menu-backdrop');
+                if(this.menuOpen) {
+                    b.classList.remove('hidden'); setTimeout(()=>b.classList.remove('opacity-0'),10);
+                    m.classList.remove('translate-x-full');
+                } else {
+                    m.classList.add('translate-x-full');
+                    b.classList.add('opacity-0'); setTimeout(()=>b.classList.add('hidden'),300);
+                }
+            },
+            toggleFullscreen: function() {
+                if(!document.fullscreenElement) document.documentElement.requestFullscreen();
+                else document.exitFullscreen();
+            },
+            route: function(view) {
+                document.querySelectorAll('.view-section').forEach(e => e.classList.add('hidden'));
+                document.getElementById(`view-${view}`).classList.remove('hidden');
+                this.toggleMenu();
+                
+                document.querySelectorAll('.menu-item').forEach(b => b.classList.remove('active'));
+                // Simple logic for highlighting would go here if using IDs on buttons
+            },
+            toast: function(msg) {
+                const t = document.getElementById('toast');
+                t.innerText = msg;
+                t.classList.remove('translate-y-20');
+                setTimeout(() => t.classList.add('translate-y-20'), 2000);
+            },
+            handleShareTarget: function() {
+                const p = new URLSearchParams(window.location.search);
+                const title = p.get('title');
+                const text = p.get('text');
+                const url = p.get('url');
+                if(title||text||url) {
+                    const content = [title,text,url].filter(Boolean).join('\n');
+                    document.getElementById('share-input').value = content;
+                    db.add({type:'text', name:'Shared Item', content, date:new Date().toLocaleString()}).then(()=>{
+                        vault.render();
+                        window.history.replaceState({},'',window.location.pathname); // Clean URL
+                        this.toast('Shared content saved!');
+                    });
+                }
+            }
+        };
+
+        // --- VAULT ---
+        const vault = {
+            render: async function() {
+                const list = document.getElementById('vault-list');
+                const files = (await db.getAll()).result; // indexedDB wrapper oddity handled here in promise normally
+                const data = await db.getAll();
+                
+                list.innerHTML = data.slice().reverse().map(f => {
+                    let icon = 'fa-file';
+                    let col = 'text-gray-400';
+                    if(f.type === 'image') { icon='fa-image'; col='text-accent'; }
+                    else if(f.type === 'video') { icon='fa-film'; col='text-danger'; }
+                    else if(f.type === 'pdf') { icon='fa-file-pdf'; col='text-red-500'; }
+                    else if(f.type === 'text') { icon='fa-align-left'; col='text-primary'; }
+                    
+                    return `
+                    <div class="glass p-3 rounded flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-3 overflow-hidden cursor-pointer" onclick="vault.open(${f.id})">
+                            <div class="w-8 h-8 rounded bg-white/5 flex items-center justify-center ${col}"><i class="fa-solid ${icon}"></i></div>
+                            <div>
+                                <div class="text-xs font-bold text-white truncate w-40">${f.name}</div>
+                                <div class="text-[9px] text-gray-500">${f.date}</div>
+                            </div>
+                        </div>
+                        <button onclick="vault.del(${f.id})" class="text-gray-600 hover:text-danger px-2"><i class="fa-solid fa-trash"></i></button>
+                    </div>`;
+                }).join('');
+            },
+            saveText: async function() {
+                const val = document.getElementById('share-input').value;
+                if(!val) return;
+                await db.add({type:'text', name: val.substring(0,15)+'...', content:val, date:new Date().toLocaleString()});
+                document.getElementById('share-input').value = '';
+                this.render(); app.toast('Text Saved');
+            },
+            saveFile: async function(input) {
+                if(input.files[0]) {
+                    const f = input.files[0];
+                    let type = 'file';
+                    if(f.type.startsWith('image')) type='image';
+                    else if(f.type.startsWith('video')) type='video';
+                    else if(f.type === 'application/pdf') type='pdf';
+                    
+                    await db.add({type, name:f.name, content:f, date:new Date().toLocaleString()});
+                    this.render(); app.toast('File Uploaded');
+                }
+            },
+            del: async function(id) {
+                if(confirm('Delete?')) { await db.del(id); this.render(); }
+            },
+            open: async function(id) {
+                const d = (await db.getAll()).find(x=>x.id===id);
+                if(!d) return;
+                const m = document.getElementById('preview-modal');
+                const b = document.getElementById('preview-body');
+                document.getElementById('preview-title').innerText = d.name;
+                
+                if(d.type==='text') b.innerHTML = `<pre class="text-xs text-primary font-mono whitespace-pre-wrap select-text">${d.content}</pre>`;
+                else {
+                    const url = URL.createObjectURL(d.content);
+                    if(d.type==='image') b.innerHTML = `<img src="${url}" class="max-w-full rounded">`;
+                    else if(d.type==='video') b.innerHTML = `<video src="${url}" controls autoplay></video>`;
+                    else if(d.type==='pdf') b.innerHTML = `<iframe src="${url}" class="w-full h-full bg-white rounded"></iframe>`;
+                }
+                m.classList.remove('hidden');
+            }
+        };
+
+        // --- MOTION ---
+        const motion = {
+            watchId: null,
+            toggleGPS: function() {
+                const btn = document.getElementById('btn-gps');
+                const disp = document.getElementById('gps-speed');
+                
+                if(this.watchId) {
+                    navigator.geolocation.clearWatch(this.watchId);
+                    this.watchId = null;
+                    btn.innerText = "ENABLE GPS";
+                    btn.classList.remove('text-primary');
+                    return;
+                }
+                
+                if('geolocation' in navigator) {
+                    btn.innerText = "LOCATING...";
+                    this.watchId = navigator.geolocation.watchPosition(p => {
+                        const speedMps = p.coords.speed || 0;
+                        const kmh = (speedMps * 3.6).toFixed(1);
+                        disp.innerText = kmh;
+                        btn.innerText = "GPS ACTIVE";
+                        btn.classList.add('text-primary');
+                    }, err => {
+                        alert('GPS Error: ' + err.message);
+                        btn.innerText = "GPS FAILED";
+                    }, { enableHighAccuracy: true });
+                }
+            },
+            reqPermission: function() {
+                if(typeof DeviceMotionEvent.requestPermission === 'function') {
+                    DeviceMotionEvent.requestPermission().then(r => { if(r==='granted') this.startAccel(); });
+                } else this.startAccel();
+            },
+            startAccel: function() {
+                window.addEventListener('devicemotion', e => {
+                    const a = e.accelerationIncludingGravity;
+                    if(!a) return;
+                    const x = a.x || 0; const y = a.y || 0; const z = a.z || 0;
+                    
+                    document.getElementById('acc-x').innerText = x.toFixed(1);
+                    document.getElementById('acc-y').innerText = y.toFixed(1);
+                    document.getElementById('acc-z').innerText = z.toFixed(1);
+                    
+                    // G-Force Calculation (9.8m/s^2 = 1G)
+                    const magnitude = Math.sqrt(x*x + y*y + z*z);
+                    const g = (magnitude / 9.8).toFixed(1);
+                    document.getElementById('g-val').innerText = g + 'g';
+                    
+                    // Visualizer
+                    const bar = document.getElementById('g-bar');
+                    const pct = Math.min((g / 3) * 100, 100); // Max visual 3G
+                    bar.style.width = pct + '%';
+                    
+                    if(g > 2.5) bar.style.backgroundColor = '#ff003c'; // Danger red
+                    else bar.style.backgroundColor = '#7000ff'; // Normal purple
+                });
+            }
+        };
+
+        // --- NETWORK ---
+        const net = {
+            fetchIP: async function() {
+                document.getElementById('my-ip').innerText = "Loading...";
+                try {
+                    const req = await fetch('https://ipapi.co/json/');
+                    const json = await req.json();
+                    document.getElementById('my-ip').innerText = json.ip;
+                    document.getElementById('my-isp').innerText = json.org;
+                    document.getElementById('my-city').innerText = `${json.city}, ${json.country_code}`;
+                } catch(e) { document.getElementById('my-ip').innerText = "Blocker Detected"; }
+                
+                // Connection Info
+                const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+                if(conn) {
+                    document.getElementById('val-type').innerText = conn.effectiveType.toUpperCase();
+                }
+            },
+            runSpeedTest: async function() {
+                const btn = document.getElementById('btn-speed');
+                const val = document.getElementById('net-speed');
+                btn.disabled = true; btn.innerText = "TESTING...";
+                
+                const start = performance.now();
+                try {
+                    // Fetch ~2MB image
+                    await fetch('https://upload.wikimedia.org/wikipedia/commons/3/3d/LARGE_elevation.jpg?' + Math.random(), {cache: "no-store"});
+                    const end = performance.now();
+                    const duration = (end - start) / 1000;
+                    const sizeBits = 1600000 * 8; // approx bits
+                    const mbps = (sizeBits / duration / 1000000).toFixed(1);
+                    
+                    val.innerText = mbps;
+                    
+                    // Ping
+                    const pStart = performance.now();
+                    await fetch(window.location.href);
+                    document.getElementById('val-ping').innerText = Math.round(performance.now()-pStart) + "ms";
+                    
+                } catch(e) { val.innerText = "ERR"; }
+                btn.disabled = false; btn.innerText = "TEST AGAIN";
+            }
+        };
+
+        // --- UTILITIES ---
+        const tools = {
+            wakeLock: null,
+            toggleWakeLock: async function() {
+                const btn = document.getElementById('btn-wake').children[0];
+                const bg = document.getElementById('btn-wake');
+                
+                if(this.wakeLock) {
+                    this.wakeLock.release(); this.wakeLock = null;
+                    btn.classList.remove('translate-x-4');
+                    bg.classList.remove('bg-success');
+                    app.toast("Screen Sleep: Normal");
+                    return;
+                }
+                try {
+                    this.wakeLock = await navigator.wakeLock.request('screen');
+                    btn.classList.add('translate-x-4');
+                    bg.classList.add('bg-success');
+                    app.toast("Screen Keep-Awake: ON");
+                } catch(e) { alert("Wake Lock not supported or blocked"); }
+            },
+            toggleTorch: async function() {
+                // Simplified Torch Logic (Video stream is complex in single file, basic toggle)
+                const btn = document.getElementById('btn-torch').children[0];
+                const bg = document.getElementById('btn-torch');
+                
+                if(this.stream) {
+                    this.stream.getTracks().forEach(t=>t.stop()); this.stream=null;
+                    btn.classList.remove('translate-x-4'); bg.classList.remove('bg-warning');
+                    return;
+                }
+                try {
+                    this.stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment', advanced:[{torch:true}]}});
+                    const track = this.stream.getVideoTracks()[0];
+                    await track.applyConstraints({advanced:[{torch:true}]});
+                    btn.classList.add('translate-x-4');
+                    // Tailwind doesn't have bg-warning default, using yellow hex
+                    bg.style.backgroundColor = '#fbbf24'; 
+                } catch(e) {
+                    // Screen Torch Fallback
+                    const d=document.createElement('div');
+                    d.style="position:fixed;inset:0;background:white;z-index:9999";
+                    d.onclick=()=>d.remove();
+                    document.body.appendChild(d);
+                }
+            },
+            genQR: function() {
+                const txt = document.getElementById('qr-text').value;
+                if(!txt) return;
+                const url = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(txt)}`;
+                const out = document.getElementById('qr-output');
+                out.innerHTML = `<img src="${url}">`;
+                out.classList.remove('hidden');
+            },
+            deadPixel: function() {
+                if(!confirm("Flashing colors. Tap to exit.")) return;
+                const d = document.createElement('div');
+                d.style = "position:fixed;inset:0;z-index:9999;cursor:pointer";
+                let i=0; const cols=['red','green','blue','white','black'];
+                d.style.background = cols[0];
+                const int = setInterval(()=>{ i++; d.style.background=cols[i%cols.length]; }, 800);
+                d.onclick = () => { clearInterval(int); d.remove(); };
+                document.body.appendChild(d);
+            }
+        };
+
+        window.onload = app.init();
+    </script>
+</body>
+</html>
+
+
